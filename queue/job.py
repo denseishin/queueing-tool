@@ -85,7 +85,7 @@ class Executable_Job(Job):
         msg = 'timeout:' + str(self.job_id)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect(self.server_address)
-        sock.sendall(msg)
+        sock.sendall(msg.encode())
         sock.close()
 
 
@@ -155,7 +155,7 @@ class Executable_Job(Job):
     def wait_for_message(self, pid):
         while True:
             connection, from_address = self.listener.accept()
-            received = connection.recv(1024)
+            received = connection.recv(1024).decode()
             if (received == 'delete') or (received == 'timeout'):
                 if self.is_running:
                     self.write_log('\nJOB KILLED: %s\n' % received)
@@ -184,9 +184,9 @@ class Executable_Job(Job):
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(10.0)
             sock.connect(self.server_address)
-            sock.sendall(msg)
+            sock.sendall(msg.encode())
             # wait for answer
-            reply = sock.recv(1024)
+            reply = sock.recv(1024).decode()
             sock.close()
         except:
             print('register job: no answer from server')

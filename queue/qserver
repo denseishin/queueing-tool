@@ -125,7 +125,7 @@ class Server(object):
         try: # if client can not be reached assume it crashed
             sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM ) 
             sock.connect(address)
-            sock.sendall(msg)
+            sock.sendall(msg.encode())
             sock.close()
         except:
             pass
@@ -195,26 +195,26 @@ class Server(object):
             + 'threads: ' + str(self.threads - self.free_threads) + '/' + str(self.threads) + '\n' \
             + 'memory:  ' + str(self.memory - self.free_memory) + '/' + str(self.memory) + '\n' \
             + 'gpus:    ' + str(len(self.gpus) - len(self.free_gpus)) + '/' + str(len(self.gpus))
-        connection.sendall(msg)
+        connection.sendall(msg.encode())
 
 
     def qstat(self, connection, verbose = False):
         for job_id in sorted(self.running_jobs):
-            connection.sendall(self.jobs[job_id].to_string(job_id, 'r', verbose))
-            connection.recv(1024) # wait for feedback
+            connection.sendall((self.jobs[job_id].to_string(job_id, 'r', verbose)).encode())
+            connection.recv(1024).decode() # wait for feedback
         for job_id in sorted(self.waiting_jobs):
-            connection.sendall(self.jobs[job_id].to_string(job_id, 'w', verbose))
-            connection.recv(1024) # wait for feedback
+            connection.sendall((self.jobs[job_id].to_string(job_id, 'w', verbose)).encode())
+            connection.recv(1024).decode() # wait for feedback
         for job_id in sorted(self.held_jobs):
-            connection.sendall(self.jobs[job_id].to_string(job_id, 'h', verbose))
-            connection.recv(1024) # wait for feedback
+            connection.sendall((self.jobs[job_id].to_string(job_id, 'h', verbose)).encode())
+            connection.recv(1024).decode() # wait for feedback
 
 
     def qdel(self, connection):
         try:
-            connection.sendall(':') # notification for client
+            connection.sendall(':'.encode()) # notification for client
             while True:
-                msg = connection.recv(1024)
+                msg = connection.recv(1024).decode()
                 assert msg != ''
                 specifier = msg.split(':')[0]
                 to_delete = re.sub('\*', '.*', msg.split(':')[1])
@@ -230,18 +230,18 @@ class Server(object):
                         joblist.append(job_id)
                 # delete jobs
                 if len(joblist) == 0:
-                    connection.sendall('no job with ' + specifier + ' ' + to_delete + ' found')
-                    connection.recv(1024) # wait for acknowledgement by client
+                    connection.sendall(('no job with ' + specifier + ' ' + to_delete + ' found').encode())
+                    connection.recv(1024).decode() # wait for acknowledgement by client
                 for job_id in sorted(joblist):
                     if (user == 'root') or (user == self.jobs[job_id].user):
-                        connection.sendall('delete job ' + str(job_id) + ' (' + self.jobs[job_id].name + ')')
-                        connection.recv(1024) # wait for acknowledgement by client
+                        connection.sendall('delete job ' + str(job_id) + ' (' + self.jobs[job_id].name + ')'.encode())
+                        connection.recv(1024).decode() # wait for acknowledgement by client
                         self.send_msg('delete', self.jobs[job_id].address)
                         self.delete_job(job_id, False)
                     else:
-                        connection.sendall('delete job ' + job_id + ' (' + self.jobs[job_id].name + '): permission denied')
-                        connection.recv(1024) # wait for acknowledgement by client
-                connection.sendall(':') # notify client that all matching jobs are deleted
+                        connection.sendall(('delete job ' + job_id + ' (' + self.jobs[job_id].name + '): permission denied').encode())
+                        connection.recv(1024).decode() # wait for acknowledgement by client
+                connection.sendall(':'.encode()) # notify client that all matching jobs are deleted
         except:
             self.schedule()
 
@@ -249,7 +249,7 @@ class Server(object):
     def handle_connection(self, connection):
         try:
             # receive data
-            msg = connection.recv(1024)
+            msg = connection.recv(1024).decode()
             # handle data
             if (msg[0:7] == 'timeout') and (self.abort_on_time_limit): # timeout
                 job_id = int(msg[8:])
@@ -257,14 +257,14 @@ class Server(object):
                 self.delete_job(job_id)
             elif msg[0:7] == 'request': # request
                 reply = self.add_job(msg[8:])
-                connection.sendall(reply)
+                connection.sendall(reply.encode())
             elif msg[0:8] == 'finished': # job finished
                 job_id = int(msg[9:])
                 if job_id in self.jobs:
                     self.send_msg('finished', self.jobs[job_id].address)
                     self.delete_job(job_id)
             elif msg == 'get_id': # request job id
-                connection.sendall(str(self.next_job_id))
+                connection.sendall(str(self.next_job_id).encode())
                 self.next_job_id = max(1, (self.next_job_id + 1) % 10000000)
             elif msg == 'qdel': # delete job
                 self.qdel(connection)

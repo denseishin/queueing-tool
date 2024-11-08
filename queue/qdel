@@ -48,16 +48,16 @@ def main():
         sock.settimeout(10.0)
         sock.connect(server_address)
         # initial request to delete jobs
-        sock.sendall('qdel')
+        sock.sendall('qdel'.encode())
         # wait for acknowledgement by server
-        sock.recv(1024)
+        sock.recv(1024).decode()
         for job in joblist:
-            sock.sendall(specifier + ':' + str(job) + ':' + user)
-            reply = sock.recv(1024)
+            sock.sendall((specifier + ':' + str(job) + ':' + user).encode())
+            reply = sock.recv(1024).decode()
             while reply != ':' and reply != '':
-                sock.sendall(':') # send acknowledgement to server
+                sock.sendall(':'.encode()) # send acknowledgement to server
                 print(reply)
-                reply = sock.recv(1024)
+                reply = sock.recv(1024).decode()
         sock.close()
     except:
         print('qdel: no answer from server')
