@@ -47,7 +47,7 @@ class Block_Parser(object):
         block[0] = re.sub('gpu=true', 'gpus=1', block[0])
         block[0] = re.sub('gpu=false', 'gpus=0', block[0])
         # extract job parameters
-        meta = re.sub('\).*', '', re.sub('.*\(', '', block[0])).split(',')
+        meta = re.sub(r'\).*', '', re.sub(r'.*\(', '', block[0])).split(',')
         parsed_block = Block()
         for param in meta:
             if len(param.split('=')) == 2:
