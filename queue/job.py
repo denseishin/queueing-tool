@@ -41,6 +41,7 @@ class Executable_Job(Job):
 
     def __init__(self, requests, job_id, subtask_id, depends_on, user, server_address):
         super( Executable_Job, self ).__init__(requests, job_id, subtask_id, depends_on, user)
+        self.tmp_script_file = None
         self.is_running = False
         # set up a socket and store address
         self.listener = socket.socket( socket.AF_INET,  socket.SOCK_STREAM )
