@@ -156,8 +156,10 @@ class Executable_Job(Job):
         while True:
             connection, from_address = self.listener.accept()
             received = connection.recv(1024).decode()
+            print(f"Debug: job.py: Job {self.job_id} received message: {received}")
             if (received == 'delete') or (received == 'timeout'):
                 if self.is_running:
+                    print(f"Debug: job.py: Job {self.job_id} received kill signal, terminating pid {pid}")
                     self.write_log('\nJOB KILLED: %s\n' % received)
                     os.killpg(os.getpgid(pid), signal.SIGKILL)
                     return
