@@ -126,16 +126,15 @@ class Server(object):
             scheduler.update_resources(len(self.free_gpus), self.free_threads, self.free_memory)
             job_id = scheduler.schedule(self.jobs, self.waiting_jobs, self.running_jobs)
 
-
     def send_msg(self, msg, address):
-        try: # if client can not be reached assume it crashed
-            sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM ) 
+        try:  # if client can not be reached assume it crashed 
+            logging.debug(f" Sending {msg} to {address}")
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
             sock.connect(address)
             sock.sendall(msg.encode())
             sock.close()
-        except:
-            pass
-
+        except Exception as e:
+            logging.debug(f" Failed to send message: {str(e)}")
 
     def delete_job(self, job_id, reschedule = True):
         # remove job_id from dependencies
