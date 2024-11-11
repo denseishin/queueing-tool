@@ -220,7 +220,6 @@ class Server(object):
         for job_id in sorted(self.held_jobs):
             connection.sendall((self.jobs[job_id].to_string(job_id, 'h', verbose)).encode())
             connection.recv(1024).decode() # wait for feedback
-
     def qdel(self, connection):
         try:
             connection.sendall(':'.encode()) # notification for client
@@ -255,6 +254,7 @@ class Server(object):
                         logging.debug(f" qserver: Deleting job {job_id}")
                         connection.sendall('delete job ' + str(job_id) + ' (' + self.jobs[job_id].name + ')'.encode())
                         connection.recv(1024).decode() # wait for acknowledgement by client
+                        logging.debug(f" qserver: Sending delete message to client at {self.jobs[job_id].address}")
                         self.send_msg('delete', self.jobs[job_id].address)
                         self.delete_job(job_id, False)
                     else:
