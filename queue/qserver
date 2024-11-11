@@ -128,16 +128,17 @@ class Server(object):
 
     def send_msg(self, msg, address):
         try:  # if client can not be reached assume it crashed 
-            logging.debug(f" Sending {msg} to {address}")
+            logging.debug(f" qserver: Sending {msg} to {address}")
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
             sock.connect(address)
             sock.sendall(msg.encode())
             sock.close()
+            logging.debug(f" qserver: Successfully sent '{msg}' to {address}")
         except Exception as e:
-            logging.debug(f" Failed to send message: {str(e)}")
+            logging.debug(f" qserver: Failed to send '{msg}' to {address}: {str(e)}")
 
     def delete_job(self, job_id, reschedule = True):
-        logging.debug(f" delete_job: Starting deletion of job {job_id}")
+        logging.debug(f" qserver: delete_job: Starting deletion of job {job_id}")
         # remove job_id from dependencies
         held = list(set(self.held_jobs) - set([job_id]))
         for j in held:
@@ -145,7 +146,7 @@ class Server(object):
                 self.jobs[j].depends_on.remove(job_id)
                 # if no dependencies left, held jobs switches to waiting
                 if len(self.jobs[j].depends_on) == 0:
-                    logging.debug(f" delete_job: Removing job {j} from held jobs")
+                    logging.debug(f" qserver: delete_job: Removing job {j} from held jobs")
                     self.held_jobs.remove(j)
                     self.waiting_jobs.append(j)
                     self.jobs[j].time = datetime.datetime.now()  # waiting time starts now
@@ -154,17 +155,17 @@ class Server(object):
     
         # remove job from job container
         job = self.jobs.pop(job_id, None)
-        logging.debug(f" delete_job: Removed job from jobs dict")
+        logging.debug(f" qserver: delete_job: Removed job from jobs dict")
         ### delete a held or waiting job ###
         if job_id in self.waiting_jobs:
-            logging.debug(f" delete_job: Removing from waiting_jobs")
+            logging.debug(f" qserver: delete_job: Removing from waiting_jobs")
             self.waiting_jobs.remove(job_id)
             self.update_priorities()
         elif job_id in self.held_jobs:
-            logging.debug(f" delete_job: Removing from held_jobs")
+            logging.debug(f" qserver: delete_job: Removing from held_jobs")
             self.held_jobs.remove(job_id)
         elif job_id in self.running_jobs:
-            logging.debug(f" delete_job: Removing from running_jobs and freeing resources")
+            logging.debug(f" qserver: delete_job: Removing from running_jobs and freeing resources")
             # free resources
             self.free_gpus = self.free_gpus + job.gpus
             self.free_memory = self.free_memory + job.memory
@@ -220,6 +221,7 @@ class Server(object):
         for job_id in sorted(self.held_jobs):
             connection.sendall((self.jobs[job_id].to_string(job_id, 'h', verbose)).encode())
             connection.recv(1024).decode() # wait for feedback
+
     def qdel(self, connection):
         try:
             connection.sendall(':'.encode()) # notification for client
@@ -264,11 +266,12 @@ class Server(object):
                 connection.sendall(':'.encode()) # notify client that all matching jobs are deleted
         except:
             self.schedule()
+            
     def handle_connection(self, connection):
         try:
             # receive data
             msg = connection.recv(1024).decode()
-            logging.debug(f" Server received message: {msg}")
+            logging.debug(f" qserver: Server received message: {msg}")
             
             # handle data
             if (msg[0:7] == 'timeout') and (self.abort_on_time_limit):
@@ -301,7 +304,7 @@ class Server(object):
                 print("Debug: qserver: Handling qinfo request")
                 self.qinfo(connection)
         except Exception as e:
-            logging.debug(f" Exception in handle_connection: {str(e)}")
+            logging.debug(f" qserver: Exception in handle_connection: {str(e)}")
             return
 
     def run(self):
