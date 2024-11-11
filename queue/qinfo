@@ -21,7 +21,8 @@ def main():
         reply = sock.recv(1024).decode()
         sock.close()
         print(reply)
-    except:
+    except Exception as e:
+        print(f"Debug: qinfo: Exception occurred: {str(e)}")
         print('qinfo: no answer from server')
 
 if __name__ == '__main__':
