@@ -3,7 +3,6 @@
 import argparse
 import os
 import subprocess
-import signal
 import socket
 from block_parser import Block_Parser
 
@@ -30,7 +29,8 @@ def request_id(server_address):
         sock.sendall('get_id'.encode()) 
         job_id = int( sock.recv(1024).decode()) 
         sock.close()
-    except:
+    except Exception as e:
+        print(f"Debug: qsub: Exception occurred: {str(e)}")
         print('request id: no answer from server')
         exit()
     return job_id
@@ -98,7 +98,8 @@ def main():
             subtask_id = int(args.subtask[1])
             assert subtask_id <= blocks[block_indices[0]].values['subtasks']
             assert subtask_id > 0
-        except:
+        except Exception as e:
+            print(f"Debug: qsub: Exception occurred: {str(e)}")
             print('block ' + args.subtask[0] + ': subtask id must be in the range 1,...,' + str(blocks[block_indices[0]].values['subtasks']) + ' but is ' + args.subtask[1])
             exit()
     elif not args.from_block == '':
