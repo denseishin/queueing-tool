@@ -6,7 +6,13 @@ import datetime
 import argparse
 import re
 from scheduler import Scheduler
+import logging
 
+logging.basicConfig(
+    filename='/var/log/qserver.log',
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 class Job(object):
 
@@ -209,16 +215,18 @@ class Server(object):
             connection.sendall((self.jobs[job_id].to_string(job_id, 'h', verbose)).encode())
             connection.recv(1024).decode() # wait for feedback
 
-
     def qdel(self, connection):
         try:
             connection.sendall(':'.encode()) # notification for client
             while True:
                 msg = connection.recv(1024).decode()
+                print(f"Debug: qserver: qserver: Received deletion message: {msg}")
                 assert msg != ''
                 specifier = msg.split(':')[0]
                 to_delete = re.sub('\*', '.*', msg.split(':')[1])
                 user = msg.split(':')[2]
+                print(f"Debug: qserver: qserver: Parsed message - specifier: {specifier}, to_delete: {to_delete}, user: {user}")
+                
                 joblist = []
                 # find relevant jobs
                 for job_id in self.jobs:
@@ -228,54 +236,67 @@ class Server(object):
                         joblist.append(job_id)
                     elif (specifier == 'id') and (job_id == int(to_delete)):
                         joblist.append(job_id)
+                
+                print(f"Debug: qserver: qserver: Found matching jobs: {joblist}")
+                
                 # delete jobs
                 if len(joblist) == 0:
+                    print(f"Debug: qserver: qserver: No jobs found matching criteria")
                     connection.sendall(('no job with ' + specifier + ' ' + to_delete + ' found').encode())
                     connection.recv(1024).decode() # wait for acknowledgement by client
                 for job_id in sorted(joblist):
                     if (user == 'root') or (user == self.jobs[job_id].user):
+                        print(f"Debug: qserver: qserver: Deleting job {job_id}")
                         connection.sendall('delete job ' + str(job_id) + ' (' + self.jobs[job_id].name + ')'.encode())
                         connection.recv(1024).decode() # wait for acknowledgement by client
                         self.send_msg('delete', self.jobs[job_id].address)
                         self.delete_job(job_id, False)
                     else:
+                        print(f"Debug: qserver: qserver: Permission denied for job {job_id}")
                         connection.sendall(('delete job ' + job_id + ' (' + self.jobs[job_id].name + '): permission denied').encode())
                         connection.recv(1024).decode() # wait for acknowledgement by client
                 connection.sendall(':'.encode()) # notify client that all matching jobs are deleted
         except:
             self.schedule()
-
-
     def handle_connection(self, connection):
         try:
             # receive data
             msg = connection.recv(1024).decode()
+            print(f"Debug: qserver: Server received message: {msg}")
+            
             # handle data
-            if (msg[0:7] == 'timeout') and (self.abort_on_time_limit): # timeout
+            if (msg[0:7] == 'timeout') and (self.abort_on_time_limit):
+                print("Debug: qserver: Handling timeout")
                 job_id = int(msg[8:])
                 self.send_msg('timeout', self.jobs[job_id].address)
                 self.delete_job(job_id)
-            elif msg[0:7] == 'request': # request
+            elif msg[0:7] == 'request':
+                print("Debug: qserver: Handling job request")
                 reply = self.add_job(msg[8:])
                 connection.sendall(reply.encode())
-            elif msg[0:8] == 'finished': # job finished
+            elif msg[0:8] == 'finished':
+                print("Debug: qserver: Handling job finish")
                 job_id = int(msg[9:])
                 if job_id in self.jobs:
                     self.send_msg('finished', self.jobs[job_id].address)
                     self.delete_job(job_id)
-            elif msg == 'get_id': # request job id
+            elif msg == 'get_id':
+                print("Debug: qserver: Handling get_id request")
                 connection.sendall(str(self.next_job_id).encode())
                 self.next_job_id = max(1, (self.next_job_id + 1) % 10000000)
-            elif msg == 'qdel': # delete job
+            elif msg == 'qdel':
+                print("Debug: qserver: Handling qdel request")
                 self.qdel(connection)
-            elif msg[0:5] == 'qstat': # print queue
+            elif msg[0:5] == 'qstat':
+                print("Debug: qserver: Handling qstat request")
                 verbose = True if msg.split(':')[1] == 'verbose' else False
                 self.qstat(connection, verbose)
-            elif msg == 'qinfo': # print resource information
+            elif msg == 'qinfo':
+                print("Debug: qserver: Handling qinfo request")
                 self.qinfo(connection)
-        except:
+        except Exception as e:
+            print(f"Debug: qserver: Exception in handle_connection: {str(e)}")
             return
-
 
     def run(self):
         self.listener.listen(1)
@@ -306,3 +327,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
