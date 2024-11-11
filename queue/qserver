@@ -137,6 +137,7 @@ class Server(object):
             logging.debug(f" Failed to send message: {str(e)}")
 
     def delete_job(self, job_id, reschedule = True):
+        logging.debug(f" delete_job: Starting deletion of job {job_id}")
         # remove job_id from dependencies
         held = list(set(self.held_jobs) - set([job_id]))
         for j in held:
@@ -144,20 +145,26 @@ class Server(object):
                 self.jobs[j].depends_on.remove(job_id)
                 # if no dependencies left, held jobs switches to waiting
                 if len(self.jobs[j].depends_on) == 0:
+                    logging.debug(f" delete_job: Removing job {j} from held jobs")
                     self.held_jobs.remove(j)
                     self.waiting_jobs.append(j)
-                    self.jobs[j].time = datetime.datetime.now() # waiting time starts now
+                    self.jobs[j].time = datetime.datetime.now()  # waiting time starts now
                     self.update_priorities()
+
+    
         # remove job from job container
         job = self.jobs.pop(job_id, None)
+        logging.debug(f" delete_job: Removed job from jobs dict")
         ### delete a held or waiting job ###
         if job_id in self.waiting_jobs:
+            logging.debug(f" delete_job: Removing from waiting_jobs")
             self.waiting_jobs.remove(job_id)
             self.update_priorities()
         elif job_id in self.held_jobs:
+            logging.debug(f" delete_job: Removing from held_jobs")
             self.held_jobs.remove(job_id)
-        ### delete a running job ###
         elif job_id in self.running_jobs:
+            logging.debug(f" delete_job: Removing from running_jobs and freeing resources")
             # free resources
             self.free_gpus = self.free_gpus + job.gpus
             self.free_memory = self.free_memory + job.memory
