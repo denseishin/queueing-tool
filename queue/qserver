@@ -254,7 +254,8 @@ class Server(object):
                 for job_id in sorted(joblist):
                     if (user == 'root') or (user == self.jobs[job_id].user):
                         logging.debug(f" qserver: qdel: Deleting job {job_id}")
-                        connection.sendall('delete job ' + str(job_id) + ' (' + self.jobs[job_id].name + ')'.encode())
+                        message = f'delete job {job_id} ({self.jobs[job_id].name})'
+                        connection.sendall(message.encode())
                         connection.recv(1024).decode() # wait for acknowledgement by client
                         logging.debug(f" qserver: qdel: Sending delete message to client at {self.jobs[job_id].address}")
                         self.send_msg('delete', self.jobs[job_id].address)
