@@ -220,12 +220,12 @@ class Server(object):
             connection.sendall(':'.encode()) # notification for client
             while True:
                 msg = connection.recv(1024).decode()
-                print(f"Debug: qserver: qserver: Received deletion message: {msg}")
+                logging.debug(f" qserver: Received deletion message: {msg}")
                 assert msg != ''
                 specifier = msg.split(':')[0]
                 to_delete = re.sub('\*', '.*', msg.split(':')[1])
                 user = msg.split(':')[2]
-                print(f"Debug: qserver: qserver: Parsed message - specifier: {specifier}, to_delete: {to_delete}, user: {user}")
+                logging.debug(f" qserver: Parsed message - specifier: {specifier}, to_delete: {to_delete}, user: {user}")
                 
                 joblist = []
                 # find relevant jobs
@@ -237,22 +237,22 @@ class Server(object):
                     elif (specifier == 'id') and (job_id == int(to_delete)):
                         joblist.append(job_id)
                 
-                print(f"Debug: qserver: qserver: Found matching jobs: {joblist}")
+                logging.debug(f" qserver: Found matching jobs: {joblist}")
                 
                 # delete jobs
                 if len(joblist) == 0:
-                    print(f"Debug: qserver: qserver: No jobs found matching criteria")
+                    logging.debug(f" qserver: No jobs found matching criteria")
                     connection.sendall(('no job with ' + specifier + ' ' + to_delete + ' found').encode())
                     connection.recv(1024).decode() # wait for acknowledgement by client
                 for job_id in sorted(joblist):
                     if (user == 'root') or (user == self.jobs[job_id].user):
-                        print(f"Debug: qserver: qserver: Deleting job {job_id}")
+                        logging.debug(f" qserver: Deleting job {job_id}")
                         connection.sendall('delete job ' + str(job_id) + ' (' + self.jobs[job_id].name + ')'.encode())
                         connection.recv(1024).decode() # wait for acknowledgement by client
                         self.send_msg('delete', self.jobs[job_id].address)
                         self.delete_job(job_id, False)
                     else:
-                        print(f"Debug: qserver: qserver: Permission denied for job {job_id}")
+                        logging.debug(f" qserver: Permission denied for job {job_id}")
                         connection.sendall(('delete job ' + job_id + ' (' + self.jobs[job_id].name + '): permission denied').encode())
                         connection.recv(1024).decode() # wait for acknowledgement by client
                 connection.sendall(':'.encode()) # notify client that all matching jobs are deleted
@@ -262,7 +262,7 @@ class Server(object):
         try:
             # receive data
             msg = connection.recv(1024).decode()
-            print(f"Debug: qserver: Server received message: {msg}")
+            logging.debug(f" Server received message: {msg}")
             
             # handle data
             if (msg[0:7] == 'timeout') and (self.abort_on_time_limit):
@@ -295,7 +295,7 @@ class Server(object):
                 print("Debug: qserver: Handling qinfo request")
                 self.qinfo(connection)
         except Exception as e:
-            print(f"Debug: qserver: Exception in handle_connection: {str(e)}")
+            logging.debug(f" Exception in handle_connection: {str(e)}")
             return
 
     def run(self):
