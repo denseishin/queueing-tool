@@ -12,7 +12,6 @@ def main():
     arg_parser.add_argument('--server_port', type=int, default=1234, help='port of the server')
     arg_parser.add_argument('jobs', type=str, nargs='+',
                             help='Jobs to be deleted. Is a space separated list of job names, user names, or jod ids. For ids, jobs ranges separated by a \'-\' are also possible.')
-    # delete by id (default), name (-n), or user (-u)
     group = arg_parser.add_mutually_exclusive_group()
     group.add_argument('-n', action='store_true', help='Delete all jobs of the given names. Asterisks can be used as wildcards.')
     group.add_argument('-u', action='store_true', help='Delete all jobs of the given users. Asterisks can be used as wildcards.')
@@ -40,26 +39,43 @@ def main():
             print('qdel: ' + ' '.join(args.jobs) + ' is not a valid list of job ids.')
             exit()
 
+    print(f"Debug: qdel: Parsed joblist: {joblist}")
+    print(f"Debug: qdel: Job specifier type: {specifier}")
+
     server_address = (args.server_ip, args.server_port)
     user = 'root' if os.geteuid() == 0 else os.getenv('USER')
+    print(f"Debug: qdel: User: {user}")
+    print(f"Debug: qdel: Server address: {server_address}")
 
     try:
         sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
         sock.settimeout(10.0)
         sock.connect(server_address)
+        print("Debug: Connected to server")
+        
         # initial request to delete jobs
         sock.sendall('qdel'.encode())
-        # wait for acknowledgement by server
-        sock.recv(1024).decode()
+        initial_reply = sock.recv(1024).decode()
+        print(f"Debug: qdel: Server initial reply: {initial_reply}")
+        
         for job in joblist:
-            sock.sendall((specifier + ':' + str(job) + ':' + user).encode())
+            message = f"{specifier}:{str(job)}:{user}"
+            print(f"Debug: qdel: Sending message: {message}")
+            sock.sendall(message.encode())
             reply = sock.recv(1024).decode()
+            print(f"Debug: qdel: Server reply: {reply}")
+            
             while reply != ':' and reply != '':
-                sock.sendall(':'.encode()) # send acknowledgement to server
+                sock.sendall(':'.encode())
+                print("Debug: Sent acknowledgement to server")
                 print(reply)
                 reply = sock.recv(1024).decode()
+                print(f"Debug: qdel: New server reply: {reply}")
+        
         sock.close()
-    except:
+        print("Debug: Connection closed")
+    except Exception as e:
+        print(f"Debug: qdel: Exception occurred: {str(e)}")
         print('qdel: no answer from server')
 
 if __name__ == '__main__':
