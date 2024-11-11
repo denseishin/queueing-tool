@@ -224,11 +224,15 @@ class Server(object):
 
     def qdel(self, connection):
         try:
-            connection.sendall(':'.encode()) # notification for client
+            message = ':'
+            logging.debug(f" qserver: qdel: Sending initial notification")
+            connection.sendall(message.encode())
+
             while True:
                 msg = connection.recv(1024).decode()
                 logging.debug(f" qserver: qdel: Received deletion message: {msg}")
                 assert msg != ''
+                
                 specifier = msg.split(':')[0]
                 to_delete = re.sub('\*', '.*', msg.split(':')[1])
                 user = msg.split(':')[2]
@@ -245,12 +249,13 @@ class Server(object):
                         joblist.append(job_id)
                 
                 logging.debug(f" qserver: qdel: Found matching jobs: {joblist}")
-                
-                # delete jobs
+
                 if len(joblist) == 0:
-                    logging.debug(f" qserver: qdel: o jobs found matching criteria")
-                    connection.sendall(('no job with ' + specifier + ' ' + to_delete + ' found').encode())
-                    connection.recv(1024).decode() # wait for acknowledgement by client
+                    logging.debug(f" qserver: qdel: No jobs found matching criteria")
+                    message = f'no job with {specifier} {to_delete} found'
+                    connection.sendall(message.encode())
+                    connection.recv(1024).decode()
+                
                 for job_id in sorted(joblist):
                     if (user == 'root') or (user == self.jobs[job_id].user):
                         logging.debug(f" qserver: qdel: Deleting job {job_id}")
@@ -262,9 +267,13 @@ class Server(object):
                         self.delete_job(job_id, False)
                     else:
                         logging.debug(f" qserver: qdel: Permission denied for job {job_id}")
-                        connection.sendall(('delete job ' + job_id + ' (' + self.jobs[job_id].name + '): permission denied').encode())
-                        connection.recv(1024).decode() # wait for acknowledgement by client
-                connection.sendall(':'.encode()) # notify client that all matching jobs are deleted
+                        message = f'delete job {job_id} ({self.jobs[job_id].name}): permission denied'
+                        connection.sendall(message.encode())
+                        connection.recv(1024).decode()
+                
+                message = ':'
+                connection.sendall(message.encode())
+
         except Exception as e:
             logging.debug(f" qserver: qdel: Exception occurred: {str(e)}")
             self.schedule()
