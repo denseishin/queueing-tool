@@ -93,6 +93,8 @@ class GPUTree(object):
     def build_tree(self, cuda_ids: List[Tuple[int,bool]]):  # list of tuples. first val cuda id, second val: is GPU reserved for outside
         cuda_ids.sort()
         bottom_leaves = list()
+        if len(cuda_ids) == 0:
+            bottom_leaves.append(None)
         for c_id in cuda_ids:
             node = GPUTreeNode(c_id[0], reserved=c_id[1])
             node.free = not c_id[1]

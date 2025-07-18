@@ -82,7 +82,7 @@ class Server(object):
                 assert msg != ''
 
                 specifier = msg.split(':')[0]
-                to_delete = re.sub('\*', '.*', msg.split(':')[1])
+                to_delete = re.sub('\\*', '.*', msg.split(':')[1])
                 user = msg.split(':')[2]
                 joblist = self.scheduler.find_jobs(specifier, to_delete)
 
